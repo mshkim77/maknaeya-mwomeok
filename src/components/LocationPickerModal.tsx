@@ -37,48 +37,63 @@ export default function LocationPickerModal({ onClose, onConfirm }: LocationPick
     setIsAddressLoading(false);
   }, []);
 
+  const [debugMsg, setDebugMsg] = useState("");
+
   // 카카오맵 초기화
   useEffect(() => {
-    if (!APP_KEY) return;
+    if (!APP_KEY) {
+      setDebugMsg("❌ APP_KEY 없음 (환경변수 미설정)");
+      return;
+    }
+    setDebugMsg(`🔑 KEY: ${APP_KEY.slice(0, 6)}...`);
 
     const initMap = () => {
-      window.kakao.maps.load(() => {
-        if (!mapRef.current) return;
+      try {
+        window.kakao.maps.load(() => {
+          if (!mapRef.current) {
+            setDebugMsg("❌ mapRef 없음");
+            return;
+          }
 
-        const center = new window.kakao.maps.LatLng(lat, lng);
-        const map = new window.kakao.maps.Map(mapRef.current, {
-          center,
-          level: 3,
+          const center = new window.kakao.maps.LatLng(lat, lng);
+          const map = new window.kakao.maps.Map(mapRef.current, {
+            center,
+            level: 3,
+          });
+          mapInstanceRef.current = map;
+          setDebugMsg("✅ 지도 로드 성공");
+
+          window.kakao.maps.event.addListener(map, "dragend", () => {
+            const c = map.getCenter();
+            fetchAddress(c.getLat(), c.getLng());
+          });
+
+          window.kakao.maps.event.addListener(map, "zoom_changed", () => {
+            const c = map.getCenter();
+            fetchAddress(c.getLat(), c.getLng());
+          });
+
+          fetchAddress(lat, lng);
         });
-        mapInstanceRef.current = map;
-
-        // 드래그 끝나면 중심 좌표로 주소 업데이트
-        window.kakao.maps.event.addListener(map, "dragend", () => {
-          const c = map.getCenter();
-          fetchAddress(c.getLat(), c.getLng());
-        });
-
-        // 줌 변경 시에도 업데이트
-        window.kakao.maps.event.addListener(map, "zoom_changed", () => {
-          const c = map.getCenter();
-          fetchAddress(c.getLat(), c.getLng());
-        });
-
-        // 초기 주소
-        fetchAddress(lat, lng);
-      });
+      } catch (e: any) {
+        setDebugMsg(`❌ 초기화 오류: ${e?.message}`);
+      }
     };
 
     if (window.kakao?.maps) {
+      setDebugMsg(prev => prev + " / kakao 이미 로드됨");
       initMap();
     } else {
       const existing = document.querySelector(`script[src*="dapi.kakao"]`);
       if (existing) {
+        setDebugMsg(prev => prev + " / 스크립트 존재, load 대기");
         existing.addEventListener("load", initMap);
       } else {
+        setDebugMsg(prev => prev + " / 스크립트 주입 중");
         const script = document.createElement("script");
         script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${APP_KEY}&autoload=false&libraries=services`;
         script.addEventListener("load", initMap);
+        script.addEventListener("error", () => setDebugMsg("❌ SDK 스크립트 로드 실패 (도메인 등록 확인)"));
         document.head.appendChild(script);
       }
     }
@@ -195,6 +210,12 @@ export default function LocationPickerModal({ onClose, onConfirm }: LocationPick
       {/* 지도 */}
       <div className="flex-1 relative overflow-hidden">
         <div ref={mapRef} className="w-full h-full" />
+        {/* 임시 디버그 */}
+        {debugMsg && (
+          <div className="absolute top-2 left-2 right-2 z-20 bg-black/80 text-white text-xs px-3 py-2 rounded-lg font-mono">
+            {debugMsg}
+          </div>
+        )}
 
         {/* 중앙 고정 핀 */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
