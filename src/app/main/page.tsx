@@ -7,6 +7,7 @@ import CategoryGrid from "@/components/CategoryGrid";
 import SpinButton from "@/components/SpinButton";
 import { FoodCategory, FOOD_CATEGORIES, getRandomRestaurant, getFilteredRestaurants } from "@/lib/mockData";
 import { Restaurant, saveRestaurant } from "@/lib/restaurant";
+import LocationPickerModal from "@/components/LocationPickerModal";
 
 type LocationState = "idle" | "loading" | "granted" | "denied";
 
@@ -17,6 +18,7 @@ export default function MainPage() {
   const [locationState, setLocationState] = useState<LocationState>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [detectedAddress, setDetectedAddress] = useState<string | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const requestLocation = useCallback(() => {
     setLocationState("loading");
@@ -123,6 +125,17 @@ export default function MainPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0F172A]">
+      {showLocationPicker && (
+        <LocationPickerModal
+          onClose={() => setShowLocationPicker(false)}
+          onConfirm={(address, lat, lng) => {
+            setDetectedAddress(address);
+            setCoords({ lat, lng });
+            setLocationState("granted");
+            setShowLocationPicker(false);
+          }}
+        />
+      )}
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#0F172A]/90 backdrop-blur-md border-b border-white/5 px-4 py-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
@@ -132,7 +145,7 @@ export default function MainPage() {
           </Link>
 
           {locationState === "idle" && (
-            <button onClick={requestLocation}
+            <button onClick={() => setShowLocationPicker(true)}
               className="flex items-center gap-1.5 text-xs font-semibold text-[#94A3B8] hover:text-[#06B6D4] transition-colors border border-white/10 px-3 py-1.5 rounded-full hover:border-[#06B6D4]/40">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
