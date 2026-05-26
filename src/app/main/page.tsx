@@ -34,8 +34,21 @@ export default function MainPage() {
           if (data.address) setDetectedAddress(data.address);
         } catch {}
       },
-      () => setLocationState("denied"),
-      { timeout: 5000 }
+      (err) => {
+        // 1: 권한 거부 / 2: 위치 불가 / 3: 타임아웃
+        if (err.code === 1) {
+          setLocationState("denied");
+        } else {
+          // 타임아웃이나 기타 오류는 재시도 가능하게 idle로
+          setLocationState("idle");
+          alert("위치를 가져오지 못했어요. 다시 시도해주세요.");
+        }
+      },
+      {
+        timeout: 15000,
+        maximumAge: 300000,   // 5분 이내 캐시된 위치 재사용
+        enableHighAccuracy: false, // 네트워크 기반 (빠름)
+      }
     );
   }, []);
 
